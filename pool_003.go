@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 )
@@ -50,6 +51,22 @@ func (pool *ConnectionPool) Range(callback func(net.Conn, int)) {
 	pool.mutex.RUnlock()
 }
 
+func handleData(nc net.Conn) {
+	for {
+		netData, err := bufio.NewReader(nc).ReadString('\n')
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		client_msg := strings.TrimSpace(string(netData))
+		fmt.Println("Client Wrote", client_msg)
+		if client_msg == "QUIT" {
+			_ = nc.Close()
+			break
+		}
+	}
+}
+
 func main() {
 
 	socket, err := net.Listen("tcp", "127.0.0.1")
@@ -66,7 +83,11 @@ func main() {
 
 			pool.Range(func(con net.Conn, id int) {
 				writer := bufio.NewWriter(con)
-				_, _ = writer.WriteString("Git new Connection")
+				if cid != id {
+					_, _ = writer.WriteString("Git new Connection \n")
+				} else {
+					_, _ = writer.WriteString("Welcome to new system \n")
+				}
 				_ = writer.Flush()
 			})
 		}
